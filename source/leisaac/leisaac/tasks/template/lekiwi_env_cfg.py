@@ -9,6 +9,7 @@ from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.recorders.recorders_cfg import (
     ActionStateRecorderManagerCfg as RecordTerm,
 )
+from isaaclab.managers import ActionTermCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
@@ -18,10 +19,12 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import FrameTransformerCfg, OffsetCfg, TiledCameraCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.datasets.episode_data import EpisodeData
+from isaaclab_physx.physics import PhysxCfg
 from leisaac.assets.robots.lerobot import LEKIWI_CFG
 from leisaac.devices.action_process import init_action_cfg, preprocess_device_action
 from leisaac.enhance.datasets.lerobot_dataset_handler import LeRobotDatasetCfg
 from leisaac.utils.constant import LEKIWI_JOINT_NAMES
+from leisaac.utils.env_utils import enable_camera_translucency
 from leisaac.utils.robot_utils import convert_leisaac_action_to_lerobot
 
 from . import mdp
@@ -45,7 +48,7 @@ class LeKiwiTaskSceneCfg(InteractiveSceneCfg):
             FrameTransformerCfg.FrameCfg(
                 prim_path="{ENV_REGEX_NS}/Robot/jaw",
                 name="jaw",
-                offset=OffsetCfg(pos=(0.02, 0.052, -0.06), rot=(0.96593, 0.25882, 0.0, 0.0)),
+                offset=OffsetCfg(pos=(0.02, 0.052, -0.06), rot=(0.25882, 0.0, 0.0, 0.96593)),
             ),  # set offset for obj detection
         ],
     )
@@ -53,8 +56,8 @@ class LeKiwiTaskSceneCfg(InteractiveSceneCfg):
     wrist: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/gripper/wrist_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.001, 0.1, -0.04), rot=(0.91218, -0.40438, 0.04869, 0.04512), convention="opengl"
-        ),  # wxyz
+            pos=(-0.001, 0.1, -0.04), rot=(-0.40438, 0.04869, 0.04512, 0.91218), convention="opengl"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=36.5,
@@ -71,8 +74,8 @@ class LeKiwiTaskSceneCfg(InteractiveSceneCfg):
     front: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/front_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(0.0, 0.13, 0.025), rot=(0.64279, 0.76604, 0.0, 0.0), convention="opengl"
-        ),  # wxyz
+            pos=(0.0, 0.13, 0.025), rot=(0.76604, 0.0, 0.0, 0.64279), convention="opengl"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=36.5,
@@ -96,9 +99,9 @@ class LeKiwiTaskSceneCfg(InteractiveSceneCfg):
 class LeKiwiActionsCfg:
     """Configuration for the actions."""
 
-    arm_action: mdp.ActionTermCfg = MISSING
-    gripper_action: mdp.ActionTermCfg = MISSING
-    wheel_action: mdp.ActionTermCfg = MISSING
+    arm_action: ActionTermCfg = MISSING
+    gripper_action: ActionTermCfg = MISSING
+    wheel_action: ActionTermCfg = MISSING
 
 
 @configclass
@@ -133,10 +136,10 @@ class LeKiwiObservationsCfg:
         joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel)
         actions = ObsTerm(func=mdp.last_action)
         wrist = ObsTerm(
-            func=mdp.image, params={"sensor_cfg": SceneEntityCfg("wrist"), "data_type": "rgb", "normalize": False}
+            func=mdp.image_rgb, params={"sensor_cfg": SceneEntityCfg("wrist"), "data_type": "rgb", "normalize": False}
         )
         front = ObsTerm(
-            func=mdp.image, params={"sensor_cfg": SceneEntityCfg("front"), "data_type": "rgb", "normalize": False}
+            func=mdp.image_rgb, params={"sensor_cfg": SceneEntityCfg("front"), "data_type": "rgb", "normalize": False}
         )
         ee_frame_state = ObsTerm(
             func=mdp.ee_frame_state,
@@ -199,9 +202,8 @@ class LeKiwiTaskEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.eye = (1.4, -0.9, 1.2)
         self.viewer.lookat = (2.0, -0.5, 1.0)
 
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.friction_correlation_distance = 0.00625
-        self.sim.render.enable_translucency = True
+        self.sim.physics = PhysxCfg(bounce_threshold_velocity=0.01, friction_correlation_distance=0.00625)
+        enable_camera_translucency(self.scene)
 
         self.scene.ee_frame.visualizer_cfg.markers["frame"].scale = (0.05, 0.05, 0.05)
 

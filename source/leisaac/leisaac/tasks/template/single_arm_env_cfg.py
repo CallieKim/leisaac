@@ -8,6 +8,7 @@ from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.recorders.recorders_cfg import (
     ActionStateRecorderManagerCfg as RecordTerm,
 )
+from isaaclab.managers import ActionTermCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
@@ -17,10 +18,12 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import FrameTransformerCfg, OffsetCfg, TiledCameraCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.datasets.episode_data import EpisodeData
+from isaaclab_physx.physics import PhysxCfg
 from leisaac.assets.robots.lerobot import SO101_FOLLOWER_CFG
 from leisaac.devices.action_process import init_action_cfg, preprocess_device_action
 from leisaac.enhance.datasets.lerobot_dataset_handler import LeRobotDatasetCfg
 from leisaac.utils.constant import SINGLE_ARM_JOINT_NAMES
+from leisaac.utils.env_utils import enable_camera_translucency
 from leisaac.utils.robot_utils import convert_leisaac_action_to_lerobot
 
 from . import mdp
@@ -50,8 +53,8 @@ class SingleArmTaskSceneCfg(InteractiveSceneCfg):
     wrist: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/gripper/wrist_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.001, 0.1, -0.04), rot=(-0.404379, -0.912179, -0.0451242, 0.0486914), convention="ros"
-        ),  # wxyz
+            pos=(-0.001, 0.1, -0.04), rot=(-0.912179, -0.0451242, 0.0486914, -0.404379), convention="ros"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=36.5,
@@ -68,8 +71,8 @@ class SingleArmTaskSceneCfg(InteractiveSceneCfg):
     front: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/base/front_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(0.0, -0.5, 0.6), rot=(0.1650476, -0.9862856, 0.0, 0.0), convention="ros"
-        ),  # wxyz
+            pos=(0.0, -0.5, 0.6), rot=(-0.9862856, 0.0, 0.0, 0.1650476), convention="ros"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=28.7,
@@ -93,8 +96,8 @@ class SingleArmTaskSceneCfg(InteractiveSceneCfg):
 class SingleArmActionsCfg:
     """Configuration for the actions."""
 
-    arm_action: mdp.ActionTermCfg = MISSING
-    gripper_action: mdp.ActionTermCfg = MISSING
+    arm_action: ActionTermCfg = MISSING
+    gripper_action: ActionTermCfg = MISSING
 
 
 @configclass
@@ -119,10 +122,10 @@ class SingleArmObservationsCfg:
         joint_vel_rel = ObsTerm(func=mdp.joint_vel_rel)
         actions = ObsTerm(func=mdp.last_action)
         wrist = ObsTerm(
-            func=mdp.image, params={"sensor_cfg": SceneEntityCfg("wrist"), "data_type": "rgb", "normalize": False}
+            func=mdp.image_rgb, params={"sensor_cfg": SceneEntityCfg("wrist"), "data_type": "rgb", "normalize": False}
         )
         front = ObsTerm(
-            func=mdp.image, params={"sensor_cfg": SceneEntityCfg("front"), "data_type": "rgb", "normalize": False}
+            func=mdp.image_rgb, params={"sensor_cfg": SceneEntityCfg("front"), "data_type": "rgb", "normalize": False}
         )
         ee_frame_state = ObsTerm(
             func=mdp.ee_frame_state,
@@ -183,9 +186,8 @@ class SingleArmTaskEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.eye = (1.4, -0.9, 1.2)
         self.viewer.lookat = (2.0, -0.5, 1.0)
 
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.friction_correlation_distance = 0.00625
-        self.sim.render.enable_translucency = True
+        self.sim.physics = PhysxCfg(bounce_threshold_velocity=0.01, friction_correlation_distance=0.00625)
+        enable_camera_translucency(self.scene)
 
         self.scene.ee_frame.visualizer_cfg.markers["frame"].scale = (0.05, 0.05, 0.05)
 

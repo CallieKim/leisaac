@@ -9,6 +9,7 @@ from isaaclab.envs import ManagerBasedRLEnvCfg
 from isaaclab.envs.mdp.recorders.recorders_cfg import (
     ActionStateRecorderManagerCfg as RecordTerm,
 )
+from isaaclab.managers import ActionTermCfg
 from isaaclab.managers import EventTermCfg as EventTerm
 from isaaclab.managers import ObservationGroupCfg as ObsGroup
 from isaaclab.managers import ObservationTermCfg as ObsTerm
@@ -18,10 +19,12 @@ from isaaclab.scene import InteractiveSceneCfg
 from isaaclab.sensors import TiledCameraCfg
 from isaaclab.utils import configclass
 from isaaclab.utils.datasets.episode_data import EpisodeData
+from isaaclab_physx.physics import PhysxCfg
 from leisaac.assets.robots.lerobot import SO101_FOLLOWER_CFG
 from leisaac.devices.action_process import init_action_cfg, preprocess_device_action
 from leisaac.enhance.datasets.lerobot_dataset_handler import LeRobotDatasetCfg
 from leisaac.utils.constant import BI_ARM_JOINT_NAMES
+from leisaac.utils.env_utils import enable_camera_translucency
 from leisaac.utils.robot_utils import convert_leisaac_action_to_lerobot
 
 from . import mdp
@@ -40,8 +43,8 @@ class BiArmTaskSceneCfg(InteractiveSceneCfg):
     left_wrist: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Left_Robot/gripper/left_wrist_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.001, 0.1, -0.04), rot=(-0.404379, -0.912179, -0.0451242, 0.0486914), convention="ros"
-        ),  # wxyz
+            pos=(-0.001, 0.1, -0.04), rot=(-0.912179, -0.0451242, 0.0486914, -0.404379), convention="ros"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=36.5,
@@ -58,8 +61,8 @@ class BiArmTaskSceneCfg(InteractiveSceneCfg):
     right_wrist: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Right_Robot/gripper/right_wrist_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(-0.001, 0.1, -0.04), rot=(-0.404379, -0.912179, -0.0451242, 0.0486914), convention="ros"
-        ),  # wxyz
+            pos=(-0.001, 0.1, -0.04), rot=(-0.912179, -0.0451242, 0.0486914, -0.404379), convention="ros"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=36.5,
@@ -76,8 +79,8 @@ class BiArmTaskSceneCfg(InteractiveSceneCfg):
     top: TiledCameraCfg = TiledCameraCfg(
         prim_path="{ENV_REGEX_NS}/Right_Robot/base/top_camera",
         offset=TiledCameraCfg.OffsetCfg(
-            pos=(0.225, -0.5, 0.6), rot=(0.1650476, -0.9862856, 0.0, 0.0), convention="ros"
-        ),  # wxyz
+            pos=(0.225, -0.5, 0.6), rot=(-0.9862856, 0.0, 0.0, 0.1650476), convention="ros"
+        ),  # xyzw
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=28.7,
@@ -101,10 +104,10 @@ class BiArmTaskSceneCfg(InteractiveSceneCfg):
 class BiArmActionsCfg:
     """Configuration for the actions."""
 
-    left_arm_action: mdp.ActionTermCfg = MISSING
-    left_gripper_action: mdp.ActionTermCfg = MISSING
-    right_arm_action: mdp.ActionTermCfg = MISSING
-    right_gripper_action: mdp.ActionTermCfg = MISSING
+    left_arm_action: ActionTermCfg = MISSING
+    left_gripper_action: ActionTermCfg = MISSING
+    right_arm_action: ActionTermCfg = MISSING
+    right_gripper_action: ActionTermCfg = MISSING
 
 
 @configclass
@@ -137,13 +140,15 @@ class BiArmObservationsCfg:
 
         actions = ObsTerm(func=mdp.last_action)
         left_wrist = ObsTerm(
-            func=mdp.image, params={"sensor_cfg": SceneEntityCfg("left_wrist"), "data_type": "rgb", "normalize": False}
+            func=mdp.image_rgb,
+            params={"sensor_cfg": SceneEntityCfg("left_wrist"), "data_type": "rgb", "normalize": False},
         )
         right_wrist = ObsTerm(
-            func=mdp.image, params={"sensor_cfg": SceneEntityCfg("right_wrist"), "data_type": "rgb", "normalize": False}
+            func=mdp.image_rgb,
+            params={"sensor_cfg": SceneEntityCfg("right_wrist"), "data_type": "rgb", "normalize": False},
         )
         top = ObsTerm(
-            func=mdp.image, params={"sensor_cfg": SceneEntityCfg("top"), "data_type": "rgb", "normalize": False}
+            func=mdp.image_rgb, params={"sensor_cfg": SceneEntityCfg("top"), "data_type": "rgb", "normalize": False}
         )
 
         def __post_init__(self):
@@ -199,9 +204,8 @@ class BiArmTaskEnvCfg(ManagerBasedRLEnvCfg):
         self.viewer.eye = (2.5, -1.0, 1.3)
         self.viewer.lookat = (3.6, -0.4, 1.0)
 
-        self.sim.physx.bounce_threshold_velocity = 0.01
-        self.sim.physx.friction_correlation_distance = 0.00625
-        self.sim.render.enable_translucency = True
+        self.sim.physics = PhysxCfg(bounce_threshold_velocity=0.01, friction_correlation_distance=0.00625)
+        enable_camera_translucency(self.scene)
 
         self.scene.left_arm.init_state.pos = (3.4, -0.65, 0.89)
         self.scene.right_arm.init_state.pos = (3.8, -0.65, 0.89)

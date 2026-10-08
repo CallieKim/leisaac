@@ -30,9 +30,9 @@ def cube_height_above_base(
     done = torch.ones(env.num_envs, dtype=torch.bool, device=env.device)
     cube: RigidObject = env.scene[cube_cfg.name]
     robot: Articulation = env.scene[robot_cfg.name]
-    cube_height = cube.data.root_pos_w[:, 2]
+    cube_height = cube.data.root_pos_w.torch[:, 2]
     base_index = robot.data.body_names.index(robot_base_name)
-    robot_base_height = robot.data.body_pos_w[:, base_index, 2]
+    robot_base_height = robot.data.body_pos_w.torch[:, base_index, 2]
     above_base = cube_height - robot_base_height > height_threshold
     done = torch.logical_and(done, above_base)
 

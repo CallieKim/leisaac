@@ -59,7 +59,7 @@ class CleanupTrashEnvCfg(LeKiwiTaskEnvCfg):
         self.viewer.lookat = (-4.4, 3.6, -2.7)
 
         self.scene.robot.init_state.pos = (-2.3, 0.8, 0.035)
-        self.scene.robot.init_state.rot = (1.0, 0.0, 0.0, 0.0)
+        self.scene.robot.init_state.rot = (0.0, 0.0, 0.0, 1.0)
 
         parse_usd_and_create_subassets(LOFT_USD_PATH, self, specific_name_list=["GarbageCan003", "Tissue005"])
 

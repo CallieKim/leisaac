@@ -18,10 +18,10 @@ def object_grasped(
     ee_frame: FrameTransformer = env.scene[ee_frame_cfg.name]
     object: RigidObject = env.scene[object_cfg.name]
 
-    object_pos = object.data.root_pos_w
-    end_effector_pos = ee_frame.data.target_pos_w[:, 1, :]
+    object_pos = object.data.root_pos_w.torch
+    end_effector_pos = ee_frame.data.target_pos_w.torch[:, 1, :]
     pos_diff = torch.linalg.vector_norm(object_pos - end_effector_pos, dim=1)
 
-    grasped = torch.logical_and(pos_diff < diff_threshold, robot.data.joint_pos[:, -1] < grasp_threshold)
+    grasped = torch.logical_and(pos_diff < diff_threshold, robot.data.joint_pos.torch[:, -1] < grasp_threshold)
 
     return grasped

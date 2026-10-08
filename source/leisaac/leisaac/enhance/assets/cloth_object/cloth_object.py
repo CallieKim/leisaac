@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 import isaaclab.sim as sim_utils
 import torch
 from isaaclab.scene import InteractiveScene
+from isaaclab_physx.physics import PhysxManager as SimulationManager
 from isaacsim.core.prims import SingleClothPrim, SingleParticleSystem
-from isaacsim.core.simulation_manager import SimulationManager
 
 if TYPE_CHECKING:
     from .cloth_object_cfg import ClothObjectCfg

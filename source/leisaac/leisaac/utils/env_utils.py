@@ -1,4 +1,6 @@
 import torch
+from isaaclab.sensors import CameraCfg
+from isaaclab_tasks.utils.presets import set_isaac_rtx_global_settings
 
 
 def dynamic_reset_gripper_effort_limit_sim(env, teleop_device):
@@ -13,7 +15,7 @@ def dynamic_reset_gripper_effort_limit_sim(env, teleop_device):
 
 
 def write_gripper_effort_limit_sim(env, env_arm):
-    gripper_pos = env_arm.data.body_link_pos_w[:, -1]  # [num_envs, 3]
+    gripper_pos = env_arm.data.body_link_pos_w.torch[:, -1]  # [num_envs, 3]
     num_envs = gripper_pos.shape[0]
 
     object_positions = []
@@ -21,9 +23,9 @@ def write_gripper_effort_limit_sim(env, env_arm):
     object_names = []
 
     for name, obj in env.scene._rigid_objects.items():
-        pos = obj.data.body_link_pos_w[:, 0]  # [num_envs, 3]
+        pos = obj.data.body_link_pos_w.torch[:, 0]  # [num_envs, 3]
         object_positions.append(pos)
-        object_masses.append(obj.data.default_mass)
+        object_masses.append(obj.data.default_mass.torch)
         object_names.append(name)
 
     if not object_positions:
@@ -67,3 +69,13 @@ def get_task_type(task: str, task_type: str | None = None) -> str:
 def delete_attribute(obj, attr_name):
     if hasattr(obj, attr_name):
         delattr(obj, attr_name)
+
+
+def enable_camera_translucency(scene_cfg) -> None:
+    """Enable RTX translucency on every camera in the scene config.
+
+    Isaac Lab 3.0 removed ``SimulationCfg.render``; the setting now lives on each camera's renderer config.
+    """
+    for value in vars(scene_cfg).values():
+        if isinstance(value, CameraCfg):
+            set_isaac_rtx_global_settings(value.renderer_cfg, enable_translucency=True)
